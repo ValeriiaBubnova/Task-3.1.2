@@ -6,5 +6,6 @@ import ru.itmentor.spring.boot_security.demo.model.Role;
 import java.util.Optional;
 
 public interface RolesRepository  extends JpaRepository<Role, Long> {
-    Optional<Role> findByEmail(String email);
+    Optional<Role> findByName(String name);
+
 }
