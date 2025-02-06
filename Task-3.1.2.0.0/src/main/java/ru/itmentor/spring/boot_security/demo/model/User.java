@@ -4,50 +4,61 @@ package ru.itmentor.spring.boot_security.demo.model;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import javax.persistence.*;
-import javax.validation.constraints.Email;
+
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import java.util.Collection;
-import java.util.List;
+
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
 @Data
 @NoArgsConstructor
 @Entity
-@Table(name = "security")
+@Table(name = "users")
 public class User implements UserDetails {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_seq")
-    @SequenceGenerator(name = "user_seq", sequenceName = "users_db_seq", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     @NotBlank(message = "Enter name")
     @Column(length = 20)
-    private String name;
+    private String username;
+
     @NotBlank(message = "Enter lastName")
     @Column(length = 30, name = "last_name")
     private String lastName;
-    @NotBlank(message = "Enter e-mail")
-    @Email(message = "Please enter a valid e-mail")
-    @Column(length = 50, unique = true)
-    private String email;
+
     @NotBlank(message = "Enter password")
     @Column(unique = true)
     @Size(min = 6, message = "Password must be more than 6 characters")
     private String password;
 
-    public User(String lastName, String name, String email) {
+    @ManyToMany
+    @JoinTable(
+            name = "users_roles",
+            joinColumns = {@JoinColumn(name = "user_id")},
+            inverseJoinColumns = {@JoinColumn(name = "role_id")}
+    )
+    private Set<Role> roles;
+
+    public User( String username, String lastName, String password, Set<Role> roles) {
+        this.username = username;
         this.lastName = lastName;
-        this.name = name;
-        this.email = email;
         this.password = password;
+        this.roles=roles;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(); //роли
+        return roles.stream()
+                .map(role -> new SimpleGrantedAuthority(role.getName()))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -57,9 +68,8 @@ public class User implements UserDetails {
 
     @Override
     public String getUsername() {
-        return email;
+        return username;
     }
-
     @Override
     public boolean isAccountNonExpired() {
         return true;

@@ -7,12 +7,11 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+
 
 @Configuration
 @EnableWebSecurity
@@ -28,44 +27,35 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 //конфиг авторизации
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http
-                .authorizeRequests()//настройка авторизации
-                .antMatchers("/auth/login", "/error").permitAll()//на указанные страницы всех пускаем
-                .anyRequest().authenticated()//все любые другие запросы только для аутентифицированных
-                .and() //переход к стр логина
+        http.csrf().disable()
+                .authorizeRequests()
+                .antMatchers("/admin/**").hasRole("ADMIN")
+                .antMatchers("/user/**").hasAnyRole("ADMIN", "USER")
+                .antMatchers("/auth/login", "/error").permitAll()
+                .anyRequest().hasAnyRole("ADMIN")
+                .and()
                 .formLogin()
-                .loginPage("/auth/login")//для входа в приложение
-                .loginProcessingUrl("/process_login")//название адреса, куда отправляем данные с формы
-                .defaultSuccessUrl("/user", true) //после аутент куда переправлять
-                .failureUrl("/auth/login?error") //если не успешная аутент
+                .loginPage("/auth/login")
+                .loginProcessingUrl("/process_login")
+                .failureUrl("/auth/login?error")
                 .successHandler(successUserHandler)
                 .permitAll()
                 .and()
                 .logout()
+                .logoutUrl("/logout")
+                .logoutSuccessUrl("/auth/login")
                 .permitAll();
     }
+
+
     //настраиваем аутентификацию
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
         auth.userDetailsService(userDetailsService);
     }
-
-
-
-    // аутентификация inMemory
-    @Bean
-    @Override
-    public UserDetailsService userDetailsService() {
-        UserDetails user =
-                User.withDefaultPasswordEncoder()
-                        .username("user")
-                        .password("user")
-                        .roles("USER")
-                        .build();
-
-        return new InMemoryUserDetailsManager(user);
-    }
     //шифорование пароля
+    @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+//        return new BCryptPasswordEncoder();
+        return NoOpPasswordEncoder.getInstance();
     }
 }
